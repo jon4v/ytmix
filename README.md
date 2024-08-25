@@ -17,10 +17,10 @@ This program downloads audio from multpile YouTube urls, trims the audio to spec
 
 ## Installation
 
-1. Install Python 3.x from the [official website](https://www.python.org/).
-2. Install `pytube` and `moviepy` using pip:
+1. Install Python 3.x
+2. Install the dependencies listed in the requirements.txt file (IMPORTANT: This is mandatory because the script uses a specific version of the `pytube` library):
     ```sh
-    pip install pytube moviepy
+    pip install -r requirements.txt
     ```
 ## Usage
 

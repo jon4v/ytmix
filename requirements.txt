@@ -1,0 +1,2 @@
+pytube @ git+https://github.com/AustinC07/pytube.git@pytubefix
+moviepy

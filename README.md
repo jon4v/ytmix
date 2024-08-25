@@ -1,6 +1,6 @@
 # ytmix
 
-This program downloads audio from given YouTube urls, trims the audio to specified segments, applies volume adjustments, and concatenates the audio segments with custom fade-in and fade-out effects.
+This program downloads audio from multpile YouTube urls, trims the audio to specified segments, applies volume adjustments, and concatenates the audio segments with custom fade-in and fade-out effects.
 
 ## Features
 

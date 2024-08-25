@@ -33,13 +33,15 @@ def concatenate_audios(audio_files, output_path):
     processed_clips = [AudioFileClip(f) for f in audio_files]
     final_clip = concatenate_audioclips(processed_clips)
     final_clip.write_audiofile(output_path, codec='mp3')
-    clean_up(audio_files)
+    return processed_clips  # Return clips for cleanup
 
 
 def clean_up(files):
     for file in files:
-        if os.path.exists(file):
+        try:
             os.remove(file)
+        except OSError as e:
+            print(f"Error deleting file {file}: {e}")
 
 
 def main():
@@ -50,6 +52,7 @@ def main():
     ]
 
     audio_files = []
+    temp_files = []
 
     for i, (url, start_time, end_time, fade_in, fade_out, volume_scale) in enumerate(video_segments):
         temp_audio_path = f"temp_audio_{i}.mp3"
@@ -59,12 +62,15 @@ def main():
         process_audio(temp_audio_path, start_time, end_time, volume_scale, fade_in, fade_out, processed_audio_path)
 
         audio_files.append(processed_audio_path)
+        temp_files.append(temp_audio_path)
+        temp_files.append(processed_audio_path)
 
-        # Ensure the file is closed before attempting to remove it
-        os.remove(temp_audio_path)  # Remove the temporary file
-
+    # Concatenate and clean up
     concatenate_audios(audio_files, "final_audio.mp3")
-    print("Final audio saved as final_audio.mp3")
+
+    # Clean up temp files after final audio is saved
+    clean_up(temp_files)
+    print("Final audio saved as final_audio.mp3 and temporary files cleaned up.")
 
 
 if __name__ == "__main__":

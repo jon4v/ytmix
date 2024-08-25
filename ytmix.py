@@ -3,55 +3,40 @@ from moviepy.editor import AudioFileClip, concatenate_audioclips
 import os
 
 
-def download_and_trim_audio(url, start_time, end_time, output_path):
+def download_audio(url, output_path):
     yt = pytube.YouTube(url)
     audio_stream = yt.streams.filter(only_audio=True).first()
     audio_stream.download(filename=output_path)
-
-    audio_clip = AudioFileClip(output_path).subclip(start_time, end_time)
-    trimmed_output_path = f"trimmed_{output_path}"
-    audio_clip.write_audiofile(trimmed_output_path, codec='mp3')
-    return trimmed_output_path
+    return output_path
 
 
-def apply_volume_adjustment(audio_clip_path, volume_scale, adjusted_output_path):
-    # Load the audio clip for processing
-    audio_clip = AudioFileClip(audio_clip_path)
-    # Adjust the volume using ffmpeg's volume filter and save the adjusted clip
-    audio_clip.write_audiofile(adjusted_output_path, codec='mp3', ffmpeg_params=["-af", f"volume={volume_scale}dB"])
-    return adjusted_output_path
+def process_audio(input_path, start_time, end_time, volume_scale, fade_in, fade_out, output_path):
+    with AudioFileClip(input_path) as audio_clip:
+        audio_clip = audio_clip.subclip(start_time, end_time)
 
-
-def concatenate_audios_with_custom_fade(audio_files, fade_settings, output_path):
-    all_files_to_delete = []  # List to collect all intermediary files
-    processed_clips = []
-    for file_path, (fade_in, fade_out, volume_scale) in zip(audio_files, fade_settings):
         # Apply volume adjustment
-        adjusted_path = f"adjusted_{file_path}"
-        adjusted_clip = apply_volume_adjustment(file_path, volume_scale, adjusted_path)
-        all_files_to_delete.append(adjusted_path)
+        if volume_scale != 0:
+            audio_clip = audio_clip.volumex(10 ** (volume_scale / 20.0))
 
-        # Load the adjusted audio clip
-        clip = AudioFileClip(adjusted_path)
-
-        # Apply fade in and fade out
+        # Apply fade-in and fade-out
         if fade_in > 0:
-            clip = clip.audio_fadein(fade_in)
+            audio_clip = audio_clip.audio_fadein(fade_in)
         if fade_out > 0:
-            clip = clip.audio_fadeout(fade_out)
+            audio_clip = audio_clip.audio_fadeout(fade_out)
 
-        processed_clips.append(clip)
+        audio_clip.write_audiofile(output_path, codec='mp3')
 
-    # Concatenate all processed clips
+    return output_path
+
+
+def concatenate_audios(audio_files, output_path):
+    processed_clips = [AudioFileClip(f) for f in audio_files]
     final_clip = concatenate_audioclips(processed_clips)
     final_clip.write_audiofile(output_path, codec='mp3')
-    all_files_to_delete.extend(audio_files)  # Add original and trimmed files to the delete list
-
-    # Clean up all temporary files
-    delete_temp_files(all_files_to_delete)
+    clean_up(audio_files)
 
 
-def delete_temp_files(files):
+def clean_up(files):
     for file in files:
         if os.path.exists(file):
             os.remove(file)
@@ -65,16 +50,21 @@ def main():
     ]
 
     audio_files = []
-    fade_settings = []
-    for i, (url, start_time, end_time, fade_in, fade_out, volume_scale) in enumerate(video_segments):
-        output_path = f"audio_{i}.mp3"
-        trimmed_audio = download_and_trim_audio(url, start_time, end_time, output_path)
-        audio_files.append(trimmed_audio)
-        fade_settings.append((fade_in, fade_out, volume_scale))
 
-    final_output_path = "final_audio.mp3"
-    concatenate_audios_with_custom_fade(audio_files, fade_settings, final_output_path)
-    print(f"Final audio saved as {final_output_path}")
+    for i, (url, start_time, end_time, fade_in, fade_out, volume_scale) in enumerate(video_segments):
+        temp_audio_path = f"temp_audio_{i}.mp3"
+        processed_audio_path = f"processed_audio_{i}.mp3"
+
+        download_audio(url, temp_audio_path)
+        process_audio(temp_audio_path, start_time, end_time, volume_scale, fade_in, fade_out, processed_audio_path)
+
+        audio_files.append(processed_audio_path)
+
+        # Ensure the file is closed before attempting to remove it
+        os.remove(temp_audio_path)  # Remove the temporary file
+
+    concatenate_audios(audio_files, "final_audio.mp3")
+    print("Final audio saved as final_audio.mp3")
 
 
 if __name__ == "__main__":
